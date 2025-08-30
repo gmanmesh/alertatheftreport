@@ -1,93 +1,83 @@
-import { google } from 'googleapis';
 import { createClient } from '@supabase/supabase-js';
 
+const SUPABASE_URL=process.env.SUPABASE_URL;
+const SUPABASE_API_KEY=process.env.SUPABASE_API_KEY;
+const BREVO_API_KEY=process.env.BREVO_API_KEY;
 
-const supabaseUrl=process.env.SEND_SUPABASE_URL;
-const supabaseAnonKey=process.env.SEND_SUPABASE_ANON_KEY;
-
-const supabase = createClient(supabaseUrl, supabaseAnonKey);
+const supabase = createClient(SUPABASE_URL, SUPABASE_API_KEY);
 
 export default async function handler(req, res) {
-  if (req.method !== 'POST') {
-    return res.status(405).json({ error: 'Method Not Allowed' });
-  }
-
-  const { to, html, attachments, userId } = req.body;
-
-  if (!userId) {
-    return res.status(400).json({ error: 'Missing userId' });
-  }
-
-  // Fetch tokens for user
-  const { data: tokenData, error } = await supabase
-    .from('tokens')
-    .select('*')
-    .eq('user_id', userId)
-    .single();
-
-  if (error || !tokenData) {
-    console.error('Token fetch error:', error);
-    return res.status(401).json({ error: 'OAuth tokens not found. Please authorize first.' });
-  }
-
-  const { access_token, refresh_token, expires_at } = tokenData;
-
-  const oAuth2Client = new google.auth.OAuth2(
-    process.env.GMAIL_CLIENT_ID,
-    process.env.GMAIL_CLIENT_SECRET,
-    'https://alertatheftreport-delta.vercel.app'
-  );
-
-  oAuth2Client.setCredentials({
-    access_token,
-    refresh_token,
-    expiry_date: expires_at ? new Date(expires_at).getTime() : undefined,
-  });
+    console.log('Handler start');
 
   try {
-    // Refresh token if expired
-    if (expires_at && new Date() > new Date(expires_at)) {
-      const { credentials } = await oAuth2Client.refreshAccessToken();
-      // Save new tokens
-      await supabase
-        .from('tokens')
-        .update({
-          access_token: credentials.access_token,
-          expiry_date: credentials.expiry_date,
-        })
-        .eq('user_id', userId);
+    console.log('Method:', req.method);
+    if (req.method !== 'POST') {
+      console.log('Invalid method');
+      res.status(405).json({ error: 'Method Not Allowed' });
+      return;
     }
 
-    const accessTokenResponse = await oAuth2Client.getAccessToken();
+    const { email } = req.body;
+    console.log('Received email:', email);
 
-    const nodemailer = require('nodemailer');
+    if (!email) {
+      console.log('Email missing');
+      res.status(400).json({ error: 'Email is required' });
+      return;
+    }
 
-    const transporter = nodemailer.createTransport({
-      service: 'gmail',
-      auth: {
-        type: 'OAuth2',
-        user: process.env.GMAIL_SENDER_EMAIL,
-        clientId: process.env.GMAIL_CLIENT_ID,
-        clientSecret: process.env.GMAIL_CLIENT_SECRET,
-        refreshToken: refresh_token,
-        accessToken: accessTokenResponse.token,
+    // Generate OTP
+    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+    console.log('Generated OTP:', otp);
+
+    // Insert into database
+    const createdAt = new Date();
+    const expiresAt = new Date(Date.now() + 15 * 60 * 1000);
+    console.log('Preparing database insert');
+
+    const { data, error } = await supabase
+      .from('otp-codes')
+      .insert([{
+        email,
+        otp,
+        created_at: createdAt.toISOString(),
+        expires_at: expiresAt.toISOString()
+      }]);
+    if (error) {
+      console.error('Database insert error:', error);
+      res.status(500).json({ error: 'Failed to store OTP', details: error.message });
+      return;
+    }
+    console.log('Stored OTP in database');
+
+    // Send email
+    console.log('Sending email...');
+    const response = await fetch('https://api.brevo.com/v3/smtp/email', {
+      method: 'POST',
+      headers: {
+        'api-key': BREVO_API_KEY,
+        'Content-Type': 'application/json',
       },
+      body: JSON.stringify({
+        sender: { name: 'Alerta App', email: 'ethiodigitalacademy@gmail.com' },
+        to: [{ email }],
+        subject: 'Your Verification Code',
+        htmlContent: `<p>Your Alerta verification code is <b>${otp}</b></p>`,
+      }),
     });
+    console.log('Email API response status:', response.status);
 
-   // Email options
-  const mailOptions = {
-    from: process.env.GMAIL_SENDER_EMAIL,
-    to: to,
-    subject: 'ALERTA - Phone Theft Report',
-    html: html,
-    attachments: attachments || [],
-  };
+    if (!response.ok) {
+      const errorData = await response.json();
+      console.error('Email sending error:', errorData);
+      res.status(500).json({ error: 'Failed to send verification email' });
+      return;
+    }
+    console.log('Email sent successfully');
 
-    await transporter.sendMail(mailOptions);
-
-    return res.status(200).json({ success: true });
+    res.status(200).json({ message: 'Verification code has been sent to your email successfully' });
   } catch (err) {
-    console.error('Error sending email:', err);
-    return res.status(500).json({ error: 'Failed to send email' });
+    console.error('Handler error:', err);
+    res.status(500).json({ error: 'Internal Server Error', details: err.message });
   }
 }

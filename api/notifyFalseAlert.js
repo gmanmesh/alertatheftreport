@@ -10,10 +10,9 @@ export default async function handler(req, res) {
       return;
     }
 
-    const { email } = req.body;
-    console.log('Received email:', email);
+    const { to, subject, html } = req.body;
 
-    if (!email) {
+    if (!to) {
       console.log('Email missing');
       res.status(400).json({ error: 'Email is required' });
       return;
@@ -28,9 +27,9 @@ export default async function handler(req, res) {
       },
       body: JSON.stringify({
         sender: { name: 'Alerta App', email: 'ethiodigitalacademy@gmail.com' },
-        to: [{ email }],
-        subject: 'Your Verification Code',
-        htmlContent: `<p>Your Alerta verification code is <b>${otp}</b></p>`,
+        to: [{ email: to, name: 'Ethiopian Federal Police' }],
+        subject: subject,
+        htmlContent: html`,
       }),
     });
     console.log('Email API response status:', response.status);

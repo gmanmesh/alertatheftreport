@@ -29,7 +29,7 @@ export default async function handler(req, res) {
         sender: { name: 'Alerta App', email: 'ethiodigitalacademy@gmail.com' },
         to: [{ email: to, name: 'Ethiopian Federal Police' }],
         subject: subject,
-        htmlContent: html`,
+        htmlContent: html,
       }),
     });
     console.log('Email API response status:', response.status);
@@ -42,7 +42,7 @@ export default async function handler(req, res) {
     }
     console.log('Email sent successfully');
 
-    res.status(200).json({ message: 'False alert has been reported successfully' });
+    res.status(200).json({success: true, message: 'False alert has been reported successfully' });
   } catch (err) {
     console.error('Handler error:', err);
     res.status(500).json({ error: 'Internal Server Error', details: err.message });

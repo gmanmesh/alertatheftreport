@@ -10,7 +10,7 @@ export default async function handler(req, res) {
       return;
     }
 
-    const { to, subject, html, attachments } = req.body;
+    const { to, subject, html, base64ImageData} = req.body;
 
     if (!to) {
       console.log('Email missing');
@@ -30,7 +30,13 @@ export default async function handler(req, res) {
         to: [{ email: to, name: 'Ethiopian Federal Police' }],
         subject: subject,
         htmlContent: html,
-        attachments: attachments,
+        attachments: [
+            {
+                name:'photo.jpg',
+                content:base64ImageData,
+                mimeType:'image/jpeg',
+            },
+        ],
       }),
     });
     console.log('Email API response status:', response.status);

@@ -30,7 +30,7 @@ export default async function handler(req, res) {
         to: [{ email: to, name: 'Ethiopian Federal Police' }],
         subject: subject,
         htmlContent: html,
-        attachments: attachments
+        attachments: attachments,
       }),
     });
     console.log('Email API response status:', response.status);

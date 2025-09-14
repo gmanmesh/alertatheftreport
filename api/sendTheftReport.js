@@ -30,7 +30,7 @@ export default async function handler(req, res) {
         to: [{ email: to, name: 'EFP' }],
         subject: subject,
         htmlContent: html,
-        attachments: [
+        attachment: [
             {
                 name: 'photo.jpg',
                 content: base64Image,

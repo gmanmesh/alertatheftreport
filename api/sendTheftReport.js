@@ -49,7 +49,7 @@ export default async function handler(req, res) {
     }
     console.log('Email sent successfully');
 
-    res.status(200).json({ success: true, message: 'Theft report has been sent successfully' });
+    res.status(200).json({ success: true, message: 'Theft report has been sent successfully', image64: base64Image });
   } catch (err) {
     console.error('Handler error:', err);
     res.status(500).json({ error: 'Internal Server Error', details: err.message });

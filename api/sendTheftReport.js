@@ -27,7 +27,7 @@ export default async function handler(req, res) {
       },
       body: JSON.stringify({
         sender: { name: 'Alerta App', email: 'ethiodigitalacademy@gmail.com' },
-        to: [{ email: to, name: 'Ethiopian Federal Police' }],
+        to: [{ email: to, name: 'EFP' }],
         subject: subject,
         htmlContent: html,
         attachments: [
